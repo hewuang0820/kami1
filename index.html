@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡密验证系统</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="config.js"></script>
+  <style>
+    .code-block {
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 10px 0;
+      overflow-x: auto;
+      font-family: Consolas, Monaco, 'Andale Mono', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .api-tabs {
+      display: flex;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .api-tab {
+      padding: 10px 15px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-right: 5px;
+      border-radius: 4px 4px 0 0;
+    }
+    .api-tab.active {
+      background-color: #f5f5f5;
+      border-color: #ddd;
+      color: #333;
+      font-weight: 500;
+    }
+    .api-content {
+      display: none;
+    }
+    .api-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <!-- 导航栏 -->
+    <header class="header">
+      <div class="container">
+        <nav class="navbar">
+          <div class="navbar__logo">
+            <h1 class="logo__text">卡密验证系统</h1>
+          </div>
+          <div class="navbar__actions">
+            <button class="btn btn--primary" @click="showAdminLogin" v-if="!isAdminLoggedIn">管理员登录</button>
+            <button class="btn btn--outline" @click="logout" v-else>退出登录</button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- 欢迎页面 - 未登录时显示 -->
+      <div class="container" v-if="!isAdminLoggedIn">
+        <div class="card welcome-card">
+          <div class="card__header">
+            <h2>欢迎使用卡密验证系统</h2>
+          </div>
+          <div class="card__body">
+            <p>本系统用于管理和验证卡密，请点击右上角的"管理员登录"按钮登录后使用完整功能。</p>
+          </div>
+        </div>
+        
+        <!-- API调用示例部分 -->
+        <div class="card mt-8">
+          <div class="card__header">
+            <h2>API调用示例</h2>
+          </div>
+          <div class="card__body">
+            <p>以下是卡密验证API的调用示例，您可以根据自己的需求选择合适的编程语言进行集成。</p>
+            
+            <div class="api-tabs">
+              <div class="api-tab active" onclick="showApiTab('python')">Python</div>
+              <div class="api-tab" onclick="showApiTab('javascript')">JavaScript</div>
+              <div class="api-tab" onclick="showApiTab('php')">PHP</div>
+              <div class="api-tab" onclick="showApiTab('yingdao')">影刀RPA</div>
+            </div>
+            
+            <!-- Python示例 -->
+            <div id="python-api" class="api-content active">
+              <h3>Python示例 (verify_card_key.py)</h3>
+              <p>完整的Python卡密验证工具代码：</p>
+              <pre class="code-block">
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+卡密验证工具
+用于验证卡密是否有效
+"""
+
+import sys
+import json
+
+# 检查是否安装了requests库
+try:
+    import requests
+except ImportError:
+    print("错误: 未安装requests库")
+    print("请运行以下命令安装:")
+    print("pip install requests")
+    print("\n如果您使用的是Windows系统，可能需要以管理员身份运行命令提示符")
+    sys.exit(1)
+
+def verify_card_key(key, user_identifier='', api_url='http://170.106.175.187/api/card-keys/verify'):
+    """
+    验证卡密是否有效
+    
+    参数:
+        key (str): 要验证的卡密
+        user_identifier (str, 可选): 用户标识符，用于记录谁使用了卡密
+        api_url (str, 可选): API地址，默认为http://170.106.175.187/api/card-keys/verify
+        
+    返回:
+        dict: 包含验证结果的字典
+    """
+    try:
+        # 发送POST请求到API
+        response = requests.post(
+            api_url,
+            json={'key': key, 'userIdentifier': user_identifier},
+            timeout=10  # 10秒超时
+        )
+        
+        # 检查HTTP状态码
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {
+                'success': False, 
+                'message': f'API错误: HTTP {response.status_code}'
+            }
+            
+    except requests.exceptions.Timeout:
+        return {'success': False, 'message': '连接超时，请检查网络'}
+    except requests.exceptions.ConnectionError:
+        return {'success': False, 'message': '连接失败，请检查网络或API地址'}
+    except json.JSONDecodeError:
+        return {'success': False, 'message': 'API返回的数据格式错误'}
+    except Exception as e:
+        return {'success': False, 'message': f'未知错误: {str(e)}'}
+
+def print_result(result):
+    """打印验证结果"""
+    print("\n===== 验证结果 =====")
+    if result['success']:
+        print("✅ 卡密验证成功!")
+        print(f"卡密: {result['data'].get('key', '未知')}")
+        print(f"类型: {result['data'].get('cardType', '未知')}")
+        print(f"有效期: {result['data'].get('validDays', '未知')}天")
+        
+        # 格式化过期时间
+        expiry_time = result['data'].get('expiryTime')
+        if expiry_time:
+            print(f"过期时间: {expiry_time[:10]}")  # 只显示日期部分
+    else:
+        print("❌ 卡密验证失败!")
+        print(f"原因: {result['message']}")
+    print("===================\n")
+
+def main():
+    """主函数"""
+    print("==== 卡密验证工具 ====")
+    print("此工具用于验证卡密是否有效")
+    
+    # 获取用户输入
+    key = input("请输入卡密: ").strip()
+    if not key:
+        print("错误: 卡密不能为空")
+        return
+    
+    user_id = input("请输入用户标识(可选): ").strip()
+    
+    print("\n正在验证卡密，请稍候...")
+    result = verify_card_key(key, user_id)
+    print_result(result)
+    
+    # 询问用户是否继续
+    while input("是否继续验证其他卡密? (y/n): ").lower() == 'y':
+        key = input("请输入卡密: ").strip()
+        if not key:
+            print("错误: 卡密不能为空")
+            continue
+        
+        user_id = input("请输入用户标识(可选): ").strip()
+        
+        print("\n正在验证卡密，请稍候...")
+        result = verify_card_key(key, user_id)
+        print_result(result)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n程序已被用户中断")
+    except Exception as e:
+        print(f"\n程序出错: {str(e)}")
+    finally:
+        print("\n感谢使用卡密验证工具!")
+              </pre>
+              <p><strong>注意：</strong>需要先安装requests库：<code>pip install requests</code></p>
+              <p>您可以<a href="verify_card_key.py" download>下载基础Python验证工具</a></p>
+
+              <h4>完整高级功能代码与集成示例</h4>
+              <p>以下为高级卡密验证系统的全部核心代码和集成示例，您可以直接复制到本地使用或参考集成：</p>
+
+              <details>
+                <summary><strong>verify_card_key_advanced.py（高级卡密验证工具，命令行版）</strong></summary>
+                <pre class="code-block">
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+高级卡密验证工具
+- 支持硬件绑定
+- 支持验证文件加密
+- 防止卡密文件复制到其他计算机使用
+"""
+
+import sys
+import json
+import os
+import platform
+import uuid
+import subprocess
+import base64
+import hashlib
+import datetime
+from typing import Dict, Any, Optional, Tuple, Union
+
+# 检查是否安装了必要的库
+try:
+    import requests
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+except ImportError:
+    print("错误: 未安装必要的库")
+    print("请运行以下命令安装:")
+    print("pip install requests cryptography")
+    print("\n如果您使用的是Windows系统，可能需要以管理员身份运行命令提示符")
+    sys.exit(1)
+
+# 配置
+API_URL = 'http://170.106.175.187/api/card-keys/verify'
+VERIFICATION_FILE = 'verification.bin'  # 加密的验证文件
+LEGACY_VERIFICATION_FILE = 'verification.json'  # 旧版明文验证文件
+SALT = b'kami_verification_system_salt'  # 盐值，用于密钥派生
+
+
+class HardwareInfo:
+    """用于获取系统硬件信息"""
+    
+    @staticmethod
+    def get_cpu_id() -> str:
+        """获取CPU ID"""
+        if platform.system() == "Windows":
+            try:
+                # Windows下获取CPU ID
+                output = subprocess.check_output("wmic cpu get ProcessorId", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                # Linux下获取CPU ID
+                with open('/proc/cpuinfo', ' 'r') as f:
+                    for line in f:
+                        if line.startswith('serial') or line.startswith('Serial'):
+                            return line.strip().split(':')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Darwin":  # macOS
+            try:
+                # macOS下获取CPU ID
+                output = subprocess.check_output("ioreg -l | grep IOPlatformSerialNumber", shell=True).decode()
+                return output.strip().split('=')[1].strip().replace('"', '')
+            except:
+                pass
+        
+        # 如果无法获取特定ID，使用更通用的方法
+        return platform.processor() + platform.machine()
+    
+    @staticmethod
+    def get_disk_serial() -> str:
+        """获取硬盘序列号"""
+        if platform.system() == "Windows":
+            try:
+                # Windows下获取第一个硬盘序列号
+                output = subprocess.check_output("wmic diskdrive get SerialNumber", shell=True).decode()
+                serial = output.strip().split('\n')[1].strip()
+                return serial if serial and serial != "" else str(uuid.getnode())
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                # Linux下尝试获取硬盘序列号
+                output = subprocess.check_output("lsblk -d -o name,serial | grep -v loop", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        # 如果无法获取，返回MAC地址的hash
+        return str(uuid.getnode())
+    
+    @staticmethod
+    def get_motherboard_serial() -> str:
+        """获取主板序列号"""
+        if platform.system() == "Windows":
+            try:
+                # Windows下获取主板序列号
+                output = subprocess.check_output("wmic baseboard get SerialNumber", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                # Linux下尝试获取主板序列号
+                output = subprocess.check_output("dmidecode -s baseboard-serial-number", shell=True).decode()
+                return output.strip()
+            except:
+                pass
+        # 如果无法获取特定序列号，使用计算机名称和当前用户名
+        return platform.node() + os.getlogin()
+    
+    @staticmethod
+    def generate_hardware_id() -> str:
+        """生成唯一的硬件标识符"""
+        cpu_id = HardwareInfo.get_cpu_id()
+        disk_serial = HardwareInfo.get_disk_serial()
+        motherboard_serial = HardwareInfo.get_motherboard_serial()
+        
+        # 组合硬件信息并生成一个哈希值作为唯一标识符
+        hardware_info = f"{cpu_id}|{disk_serial}|{motherboard_serial}"
+        hardware_hash = hashlib.sha256(hardware_info.encode()).hexdigest()
+        
+        return hardware_hash
+
+
+class Encryption:
+    """处理加密和解密操作"""
+    
+    @staticmethod
+    def get_key(hardware_id: str) -> bytes:
+        """从硬件ID生成加密密钥"""
+        # 使用硬件ID和盐值派生一个密钥
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=SALT,
+            iterations=100000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(hardware_id.encode()))
+        return key
+    
+    @staticmethod
+    def encrypt_data(data: Dict[str, Any], hardware_id: str) -> bytes:
+        """加密数据"""
+        # 将数据转换为JSON字符串
+        json_data = json.dumps(data)
+        
+        # 获取加密密钥
+        key = Encryption.get_key(hardware_id)
+        
+        # 使用Fernet对称加密
+        fernet = Fernet(key)
+        encrypted_data = fernet.encrypt(json_data.encode())
+        
+        return encrypted_data
+    
+    @staticmethod
+    def decrypt_data(encrypted_data: bytes, hardware_id: str) -> Optional[Dict[str, Any]]:
+        """解密数据"""
+        try:
+            # 获取解密密钥
+            key = Encryption.get_key(hardware_id)
+            
+            # 使用Fernet对称解密
+            fernet = Fernet(key)
+            decrypted_data = fernet.decrypt(encrypted_data).decode()
+            
+            # 解析JSON
+            return json.loads(decrypted_data)
+        except Exception as e:
+            print(f"解密失败：{e}")
+            return None
+
+
+class VerificationManager:
+    """管理验证信息的加载、保存和验证"""
+    
+    def __init__(self):
+        self.hardware_id = HardwareInfo.generate_hardware_id()
+        self.verification_data = None
+    
+    def load_verification_data(self) -> Optional[Dict[str, Any]]:
+        """加载验证信息，优先尝试加密文件，然后是旧版明文文件"""
+        # 尝试加载并解密二进制验证文件
+        if os.path.exists(VERIFICATION_FILE):
+            try:
+                with open(VERIFICATION_FILE, 'rb') as f:
+                    encrypted_data = f.read()
+                
+                data = Encryption.decrypt_data(encrypted_data, self.hardware_id)
+                if data:
+                    print("成功加载加密的验证信息")
+                    return data
+                else:
+                    print("无法解密验证信息，设备可能已更换")
+            except Exception as e:
+                print(f"加载验证文件失败: {e}")
+        
+        # 如果加密文件加载失败，尝试加载旧版明文文件
+        if os.path.exists(LEGACY_VERIFICATION_FILE):
+            try:
+                with open(LEGACY_VERIFICATION_FILE, 'r') as f:
+                    data = json.load(f)
+                print("成功加载旧版明文验证信息")
+                return data
+            except Exception as e:
+                print(f"加载旧版验证文件失败: {e}")
+        
+        return None
+    
+    def save_verification_data(self, data: Dict[str, Any]) -> bool:
+        """加密并保存验证信息"""
+        try:
+            # 添加硬件信息和时间戳
+            data['hardware_id'] = self.hardware_id
+            data['device_bound'] = True
+            data['verified_at'] = datetime.datetime.now().isoformat()
+            
+            # 加密数据
+            encrypted_data = Encryption.encrypt_data(data, self.hardware_id)
+            
+            # 保存到文件
+            with open(VERIFICATION_FILE, 'wb') as f:
+                f.write(encrypted_data)
+            
+            print("验证信息已加密保存")
+            return True
+        except Exception as e:
+            print(f"保存验证信息失败: {e}")
+            # 如果加密保存失败，尝试使用旧方式保存
+            try:
+                with open(LEGACY_VERIFICATION_FILE, 'w') as f:
+                    json.dump(data, f, indent=2)
+                print("验证信息已以旧格式保存")
+                return True
+            except:
+                return False
+    
+    def is_verified(self) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """检查是否已经验证，并且验证信息是否与当前硬件匹配"""
+        data = self.load_verification_data()
+        if not data:
+            return False, None
+        
+        # 检查硬件ID是否匹配
+        if 'hardware_id' in data and data['hardware_id'] != self.hardware_id:
+            print("警告：验证信息与当前设备不匹配")
+            return False, data
+        
+        return True, data
+
+
+def verify_card_key(key: str, user_identifier: str = '') -> Dict[str, Any]:
+    """
+    验证卡密是否有效
+    
+    参数:
+        key (str): 要验证的卡密
+        user_identifier (str, 可选): 用户标识符，用于记录谁使用了卡密
+        
+    返回:
+        dict: 包含验证结果的字典
+    """
+    try:
+        # 发送POST请求到API
+        response = requests.post(
+            API_URL,
+            json={'key': key, 'userIdentifier': user_identifier},
+            timeout=10  # 10秒超时
+        )
+        
+        # 检查HTTP状态码
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {
+                'success': False, 
+                'message': f'API错误: HTTP {response.status_code}'
+            }
+            
+    except requests.exceptions.Timeout:
+        return {'success': False, 'message': '连接超时，请检查网络'}
+    except requests.exceptions.ConnectionError:
+        return {'success': False, 'message': '连接失败，请检查网络或API地址'}
+    except json.JSONDecodeError:
+        return {'success': False, 'message': 'API返回的数据格式错误'}
+    except Exception as e:
+        return {'success': False, 'message': f'未知错误: {str(e)}'}
+
+
+def print_result(result: Dict[str, Any], verification_manager: VerificationManager) -> None:
+    """打印验证结果"""
+    print("\n===== 验证结果 =====")
+    if result['success']:
+        print("✅ 卡密验证成功!")
+        print(f"卡密: {result['data'].get('key', '未知')}")
+        print(f"类型: {result['data'].get('cardType', '未知')}")
+        print(f"有效期: {result['data'].get('validDays', '未知')}天")
+        
+        # 格式化过期时间
+        expiry_time = result['data'].get('expiryTime')
+        if expiry_time:
+            print(f"过期时间: {expiry_time[:10]}")  # 只显示日期部分
+        
+        # 显示设备绑定状态
+        is_verified, data = verification_manager.is_verified()
+        if is_verified:
+            print("设备状态: 已绑定到当前设备")
+        else:
+            print("设备状态: 新绑定")
+    else:
+        print("❌ 卡密验证失败!")
+        print(f"原因: {result['message']}")
+    print("===================\n")
+
+
+def main():
+    """主函数"""
+    print("==== 高级卡密验证工具 ====")
+    print("此工具用于验证卡密是否有效，并支持硬件绑定和验证文件加密")
+    
+    # 初始化验证管理器
+    verification_manager = VerificationManager()
+    
+    # 检查是否已经验证过
+    is_verified, verification_data = verification_manager.is_verified()
+    if is_verified:
+        print("\n您的卡密已经通过验证，无需重复验证")
+        print("验证信息:")
+        if verification_data.get('data'):
+            print(f"卡密: {verification_data['data'].get('key', '未知')}")
+            print(f"类型: {verification_data['data'].get('cardType', '未知')}")
+            print(f"有效期: {verification_data['data'].get('validDays', '未知')}天")
+            
+            expiry_time = verification_data['data'].get('expiryTime')
+            if expiry_time:
+                print(f"过期时间: {expiry_time[:10]}")
+            
+            print("设备状态: 已绑定到当前设备")
+        
+        if input("\n是否重新验证? (y/n): ").lower() != 'y':
+            return
+    
+    # 获取用户输入
+    key = input("请输入卡密: ").strip()
+    if not key:
+        print("错误: 卡密不能为空")
+        return
+    
+    user_id = input("请输入用户标识(可选): ").strip()
+    
+    print("\n正在验证卡密，请稍候...")
+    result = verify_card_key(key, user_id)
+    
+    # 显示验证结果
+    print_result(result, verification_manager)
+    
+    # 如果验证成功，保存验证信息
+    if result['success']:
+        if verification_manager.save_verification_data(result):
+            print("验证信息已成功保存到本设备")
+    
+    # 询问用户是否继续
+    while input("是否继续验证其他卡密? (y/n): ").lower() == 'y':
+        key = input("请输入卡密: ").strip()
+        if not key:
+            print("错误: 卡密不能为空")
+            continue
+        
+        user_id = input("请输入用户标识(可选): ").strip()
+        
+        print("\n正在验证卡密，请稍候...")
+        result = verify_card_key(key, user_id)
+        print_result(result, verification_manager)
+        
+        if result['success']:
+            if verification_manager.save_verification_data(result):
+                print("验证信息已成功保存到本设备")
+
+
+def debug_hardware_info():
+    """打印硬件信息，用于调试"""
+    print("==== 硬件信息 ====")
+    print(f"CPU ID: {HardwareInfo.get_cpu_id()}")
+    print(f"硬盘序列号: {HardwareInfo.get_disk_serial()}")
+    print(f"主板序列号: {HardwareInfo.get_motherboard_serial()}")
+    print(f"硬件唯一标识: {HardwareInfo.generate_hardware_id()}")
+    print("==================")
+
+
+if __name__ == "__main__":
+    try:
+        # 检查是否是调试模式
+        if len(sys.argv) > 1 and sys.argv[1] == "--debug":
+            debug_hardware_info()
+        else:
+            main()
+    except KeyboardInterrupt:
+        print("\n\n程序已被用户中断")
+    except Exception as e:
+        print(f"\n程序出错: {str(e)}")
+        # 如果是调试模式，显示完整错误信息
+        if len(sys.argv) > 1 and sys.argv[1] == "--debug":
+            import traceback
+            traceback.print_exc()
+    finally:
+        print("\n感谢使用高级卡密验证工具!")
+              </pre>
+              </details>
+
+              <details>
+                <summary><strong>verification_utils.py（核心功能库，推荐集成到项目）</strong></summary>
+                <pre class="code-block">
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+卡密验证系统工具库
+提供硬件绑定和验证文件加密的核心功能，方便集成到其他项目
+"""
+
+import os
+import sys
+import json
+import platform
+import uuid
+import subprocess
+import base64
+import hashlib
+import datetime
+from typing import Dict, Any, Optional, Tuple, Union
+
+try:
+    import requests
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+except ImportError:
+    print("错误: 未安装必要的库")
+    print("请运行以下命令安装:")
+    print("pip install requests cryptography")
+    sys.exit(1)
+
+# 默认配置
+DEFAULT_API_URL = 'http://170.106.175.187/api/card-keys/verify'
+DEFAULT_VERIFICATION_FILE = 'verification.bin'
+DEFAULT_LEGACY_FILE = 'verification.json'
+DEFAULT_SALT = b'kami_verification_system_salt'
+
+
+class HardwareInfo:
+    """硬件信息收集工具类"""
+    
+    @staticmethod
+    def get_cpu_id() -> str:
+        """获取CPU ID"""
+        if platform.system() == "Windows":
+            try:
+                output = subprocess.check_output("wmic cpu get ProcessorId", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                with open('/proc/cpuinfo', 'r') as f:
+                    for line in f:
+                        if line.startswith('serial') or line.startswith('Serial'):
+                            return line.strip().split(':')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Darwin":  # macOS
+            try:
+                output = subprocess.check_output("ioreg -l | grep IOPlatformSerialNumber", shell=True).decode()
+                return output.strip().split('=')[1].strip().replace('"', '')
+            except:
+                pass
+        
+        return platform.processor() + platform.machine()
+    
+    @staticmethod
+    def get_disk_serial() -> str:
+        """获取硬盘序列号"""
+        if platform.system() == "Windows":
+            try:
+                output = subprocess.check_output("wmic diskdrive get SerialNumber", shell=True).decode()
+                serial = output.strip().split('\n')[1].strip()
+                return serial if serial and serial != "" else str(uuid.getnode())
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                output = subprocess.check_output("lsblk -d -o name,serial | grep -v loop", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        
+        # 如果无法获取，返回MAC地址的hash
+        return str(uuid.getnode())
+    
+    @staticmethod
+    def get_motherboard_serial() -> str:
+        """获取主板序列号"""
+        if platform.system() == "Windows":
+            try:
+                output = subprocess.check_output("wmic baseboard get SerialNumber", shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+            except:
+                pass
+        elif platform.system() == "Linux":
+            try:
+                output = subprocess.check_output("dmidecode -s baseboard-serial-number", shell=True).decode()
+                return output.strip()
+            except:
+                pass
+        
+        # 如果无法获取特定序列号，使用计算机名称和当前用户名
+        return platform.node() + os.getlogin()
+    
+    @staticmethod
+    def generate_hardware_id() -> str:
+        """生成唯一的硬件标识符"""
+        cpu_id = HardwareInfo.get_cpu_id()
+        disk_serial = HardwareInfo.get_disk_serial()
+        motherboard_serial = HardwareInfo.get_motherboard_serial()
+        
+        hardware_info = f"{cpu_id}|{disk_serial}|{motherboard_serial}"
+        hardware_hash = hashlib.sha256(hardware_info.encode()).hexdigest()
+        
+        return hardware_hash
+
+
+class KamiEncryption:
+    """卡密验证加密工具类"""
+    
+    def __init__(self, salt: bytes = DEFAULT_SALT):
+        self.salt = salt
+    
+    def get_key_from_hardware(self) -> bytes:
+        """从当前硬件生成加密密钥"""
+        hardware_id = HardwareInfo.generate_hardware_id()
+        return self.get_key(hardware_id)
+    
+    def get_key(self, hardware_id: str) -> bytes:
+        """从硬件ID生成加密密钥"""
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=self.salt,
+            iterations=100000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(hardware_id.encode()))
+        return key
+    
+    def encrypt_data(self, data: Dict[str, Any], hardware_id: Optional[str] = None) -> bytes:
+        """加密数据"""
+        json_data = json.dumps(data)
+        
+        if hardware_id is None:
+            hardware_id = HardwareInfo.generate_hardware_id()
+            
+        key = self.get_key(hardware_id)
+        fernet = Fernet(key)
+        encrypted_data = fernet.encrypt(json_data.encode())
+        
+        return encrypted_data
+    
+    def decrypt_data(self, encrypted_data: bytes, hardware_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """解密数据"""
+        try:
+            if hardware_id is None:
+                hardware_id = HardwareInfo.generate_hardware_id()
+                
+            key = self.get_key(hardware_id)
+            fernet = Fernet(key)
+            decrypted_data = fernet.decrypt(encrypted_data).decode()
+            
+            return json.loads(decrypted_data)
+        except Exception as e:
+            print(f"解密失败：{e}")
+            return None
+
+
+class KamiVerifier:
+    """卡密验证工具类"""
+    
+    def __init__(self, 
+                 api_url: str = DEFAULT_API_URL,
+                 verification_file: str = DEFAULT_VERIFICATION_FILE,
+                 legacy_file: str = DEFAULT_LEGACY_FILE):
+        self.api_url = api_url
+        self.verification_file = verification_file
+        self.legacy_file = legacy_file
+        self.hardware_id = HardwareInfo.generate_hardware_id()
+        self.encryption = KamiEncryption()
+    
+    def verify_card_key(self, key: str, user_identifier: str = '') -> Dict[str, Any]:
+        """验证卡密是否有效"""
+        try:
+            response = requests.post(
+                self.api_url,
+                json={'key': key, 'userIdentifier': user_identifier},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                # 如果验证成功，保存验证信息
+                if result.get('success', False):
+                    self.save_verification_data(result)
+                return result
+            else:
+                return {
+                    'success': False, 
+                    'message': f'API错误: HTTP {response.status_code}'
+                }
+                
+        except requests.exceptions.Timeout:
+            return {'success': False, 'message': '连接超时，请检查网络'}
+        except requests.exceptions.ConnectionError:
+            return {'success': False, 'message': '连接失败，请检查网络或API地址'}
+        except json.JSONDecodeError:
+            return {'success': False, 'message': 'API返回的数据格式错误'}
+        except Exception as e:
+            return {'success': False, 'message': f'未知错误: {str(e)}'}
+    
+    def load_verification_data(self) -> Optional[Dict[str, Any]]:
+        """加载验证信息，优先尝试加密文件，然后是旧版明文文件"""
+        # 尝试加载加密文件
+        if os.path.exists(self.verification_file):
+            try:
+                with open(self.verification_file, 'rb') as f:
+                    encrypted_data = f.read()
+                
+                data = self.encryption.decrypt_data(encrypted_data, self.hardware_id)
+                if data:
+                    return data
+            except:
+                pass
+        
+        # 尝试加载旧版明文文件
+        if os.path.exists(self.legacy_file):
+            try:
+                with open(self.legacy_file, 'r') as f:
+                    data = json.load(f)
+                return data
+            except:
+                pass
+        
+        return None
+    
+    def save_verification_data(self, data: Dict[str, Any]) -> bool:
+        """加密并保存验证信息"""
+        try:
+            # 添加硬件信息和时间戳
+            data['hardware_id'] = self.hardware_id
+            data['device_bound'] = True
+            data['verified_at'] = datetime.datetime.now().isoformat()
+            
+            # 加密数据
+            encrypted_data = self.encryption.encrypt_data(data, self.hardware_id)
+            
+            # 保存到文件
+            with open(self.verification_file, 'wb') as f:
+                f.write(encrypted_data)
+            
+            return True
+        except:
+            # 如果加密保存失败，尝试使用旧方式保存
+            try:
+                with open(self.legacy_file, 'w') as f:
+                    json.dump(data, f, indent=2)
+                return True
+            except:
+                return False
+    
+    def is_verified(self) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """检查是否已经验证，并且验证信息是否与当前硬件匹配"""
+        data = self.load_verification_data()
+        if not data:
+            return False, None
+        
+        # 检查硬件ID是否匹配
+        if 'hardware_id' in data and data['hardware_id'] != self.hardware_id:
+            return False, data
+        
+        # 检查是否已过期
+        if 'data' in data and 'expiryTime' in data['data']:
+            expiry_time = data['data']['expiryTime']
+            try:
+                # 格式如 2023-12-31T23:59:59
+                expiry_date = datetime.datetime.fromisoformat(expiry_time)
+                if expiry_date < datetime.datetime.now():
+                    return False, data
+            except:
+                pass
+        
+        return True, data
+
+
+# 便捷函数，可以直接导入使用
+def verify_card(key: str, user_id: str = '') -> Dict[str, Any]:
+    """
+    验证卡密是否有效的便捷函数
+    
+    参数:
+        key (str): 卡密
+        user_id (str, 可选): 用户标识
+    
+    返回:
+        Dict[str, Any]: 验证结果
+    """
+    verifier = KamiVerifier()
+    return verifier.verify_card_key(key, user_id)
+
+
+def is_card_valid() -> bool:
+    """
+    检查当前设备上的卡密是否有效
+    
+    返回:
+        bool: 卡密是否有效
+    """
+    verifier = KamiVerifier()
+    is_valid, _ = verifier.is_verified()
+    return is_valid
+
+
+def get_hardware_id() -> str:
+    """
+    获取当前设备的硬件ID
+    
+    返回:
+        str: 硬件ID
+    """
+    return HardwareInfo.generate_hardware_id()
+
+
+# 以下是示例用法
+if __name__ == "__main__":
+    # 演示硬件信息收集
+    print("===== 硬件信息 =====")
+    print(f"CPU ID: {HardwareInfo.get_cpu_id()}")
+    print(f"硬盘序列号: {HardwareInfo.get_disk_serial()}")
+    print(f"主板序列号: {HardwareInfo.get_motherboard_serial()}")
+    print(f"硬件唯一标识: {HardwareInfo.generate_hardware_id()}")
+    
+    # 演示验证功能
+    print("\n===== 卡密验证 =====")
+    verifier = KamiVerifier()
+    is_valid, data = verifier.is_verified()
+    
+    if is_valid:
+        print("此设备已经验证过卡密")
+        if data and 'data' in data:
+            print(f"卡密: {data['data'].get('key', '未知')}")
+            print(f"过期时间: {data['data'].get('expiryTime', '未知')}")
+    else:
+        print("此设备尚未验证卡密或验证已过期")
+        key = input("请输入卡密进行验证: ")
+        if key:
+            result = verifier.verify_card_key(key)
+            print("验证结果:", result['success'])
+            if result['success']:
+                print("卡密验证成功并已绑定到当前设备") 
+</pre>
+              </details>
+
+              <details>
+                <summary><strong>kami_integration_examples.py（集成场景示例）</strong></summary>
+                <pre class="code-block">
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+卡密验证系统集成示例
+展示如何在不同场景下集成卡密验证功能
+"""
+
+import sys
+import os
+import time
+import json
+import logging
+from typing import Dict, Any, Optional
+
+# 导入验证工具库
+try:
+    from verification_utils import KamiVerifier, HardwareInfo, is_card_valid, verify_card
+except ImportError:
+    print("错误: 未能导入验证工具库")
+    print("请确保verification_utils.py文件在当前目录")
+    sys.exit(1)
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(), logging.FileHandler('kami_verification.log')]
+)
+logger = logging.getLogger('kami_verification')
+
+
+# 示例1: 简单的命令行应用程序启动保护
+def example_app_startup_protection():
+    """
+    应用程序启动保护示例
+    在程序启动时验证卡密，如果无效则退出
+    """
+    print("=" * 60)
+    print("示例1: 应用程序启动保护")
+    print("=" * 60)
+
+    # 检查是否已验证
+    if is_card_valid():
+        print("卡密验证通过，正在启动程序...")
+        print("程序已成功启动，可以开始使用了！")
+        return True
+    
+    # 未验证，要求用户输入卡密
+    print("首次使用本软件需要验证卡密")
+    print("请联系供应商获取卡密")
+    
+    attempts = 0
+    max_attempts = 3
+    
+    while attempts < max_attempts:
+        key = input("\n请输入卡密: ").strip()
+        if not key:
+            print("错误: 卡密不能为空")
+            continue
+            
+        print("正在验证卡密，请稍候...")
+        result = verify_card(key)
+        
+        if result['success']:
+            print("\n✅ 卡密验证成功!")
+            print("软件已激活，感谢您的使用!")
+            print("程序正在启动...")
+            print("程序已成功启动，可以开始使用了！")
+            return True
+        else:
+            attempts += 1
+            remaining = max_attempts - attempts
+            print(f"\n❌ 卡密验证失败: {result['message']}")
+            if remaining > 0:
+                print(f"您还有 {remaining} 次尝试机会")
+            else:
+                print("验证次数已用完，程序将退出")
+                return False
+    
+    return False
+
+
+# 示例2: 软件功能解锁
+def example_feature_unlock():
+    """
+    软件功能解锁示例
+    根据卡密类型解锁不同级别的功能
+    """
+    print("\n" + "=" * 60)
+    print("示例2: 软件功能解锁")
+    print("=" * 60)
+    
+    # 初始化验证器
+    verifier = KamiVerifier()
+    is_valid, data = verifier.is_verified()
+    
+    # 定义功能列表
+    features = {
+        "basic": ["文件读取", "基本编辑", "保存文件"],
+        "standard": ["语法高亮", "自动补全", "主题切换"],
+        "premium": ["智能建议", "代码分析", "团队协作", "云端同步"]
+    }
+    
+    # 确定用户等级
+    user_level = "无卡密"
+    if is_valid and data and 'data' in data:
+        card_type = data['data'].get('cardType', '')
+        if "高级" in card_type:
+            user_level = "premium"
+        elif "标准" in card_type:
+            user_level = "standard"
+        elif "基础" in card_type:
+            user_level = "basic"
+    
+    # 显示用户可用功能
+    print(f"当前用户级别: {user_level}")
+    print("可用功能:")
+    
+    available_features = []
+    if user_level == "premium":
+        available_features = features["basic"] + features["standard"] + features["premium"]
+    elif user_level == "standard":
+        available_features = features["basic"] + features["standard"]
+    elif user_level == "basic":
+        available_features = features["basic"]
+    
+    for feature in available_features:
+        print(f"- {feature}")
+    
+    # 显示未解锁功能
+    if user_level != "premium":
+        print("\n升级到高级版可解锁以下功能:")
+        for feature in features["premium"]:
+            if feature not in available_features:
+                print(f"- {feature}")
+    
+    if user_level == "无卡密":
+        print("\n请购买卡密以解锁更多功能!")
+        key = input("输入卡密立即升级(直接回车跳过): ")
+        if key.strip():
+            print("正在验证卡密...")
+            result = verifier.verify_card_key(key)
+            if result['success']:
+                print("✅ 卡密验证成功，软件已升级!")
+            else:
+                print(f"❌ 卡密验证失败: {result['message']}")
+
+
+# 示例3: 周期性校验
+def example_periodic_verification():
+    """
+    周期性校验示例
+    定期检查卡密是否依然有效，适用于订阅模式软件
+    """
+    print("\n" + "=" * 60)
+    print("示例3: 周期性校验(模拟)")
+    print("=" * 60)
+    
+    # 初始化验证器
+    verifier = KamiVerifier()
+    
+    # 模拟软件运行
+    print("软件正在运行...")
+    
+    # 模拟周期性检查3次
+    for i in range(1, 4):
+        print(f"\n[模拟] 第{i}次周期性检查 (假设间隔24小时)")
+        
+        # 检查卡密是否有效
+        is_valid, data = verifier.is_verified()
+        
+        if is_valid:
+            print("✅ 卡密验证通过，软件可以继续使用")
+            
+            # 显示卡密信息
+            if data and 'data' in data:
+                expiry_time = data['data'].get('expiryTime', '')
+                if expiry_time:
+                    print(f"卡密过期时间: {expiry_time[:10]}")
+                    
+                    # 如果剩余天数少于7天，显示提醒
+                    try:
+                        import datetime
+                        expiry = datetime.datetime.fromisoformat(expiry_time)
+                        now = datetime.datetime.now()
+                        days_left = (expiry - now).days
+                        
+                        if days_left <= 7:
+                            print(f"⚠️ 注意: 您的卡密将在 {days_left} 天后过期，请及时续费")
+                    except:
+                        pass
+        else:
+            print("❌ 卡密已过期或无效")
+            print("请重新验证卡密以继续使用软件")
+            break
+        
+        # 模拟时间流逝
+        print("软件继续运行中...")
+        time.sleep(1)  # 实际应用中是24小时
+
+
+# 示例4: 绑定软件配置文件
+def example_config_binding():
+    """
+    配置文件绑定示例
+    将软件配置与硬件信息绑定，防止配置文件复制到其他设备使用
+    """
+    print("\n" + "=" * 60)
+    print("示例4: 配置文件绑定")
+    print("=" * 60)
+    
+    CONFIG_FILE = "software_config.json"
+    
+    # 获取硬件ID
+    hardware_id = HardwareInfo.generate_hardware_id()
+    print(f"当前设备硬件ID: {hardware_id}")
+    
+    # 检查配置文件是否存在
+    if os.path.exists(CONFIG_FILE):
+        # 读取配置文件
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+            
+            # 检查硬件ID是否匹配
+            if config.get('hardware_id') == hardware_id:
+                print("✅ 配置文件验证通过")
+                print("软件配置:")
+                for key, value in config.items():
+                    if key != 'hardware_id':
+                        print(f"- {key}: {value}")
+            else:
+                print("❌ 配置文件与当前设备不匹配")
+                print("警告: 检测到可能的非法复制行为")
+                print("配置文件将被重置")
+                
+                # 创建新的配置文件
+                create_new_config(hardware_id)
+        except:
+            print("❌ 配置文件损坏")
+            create_new_config(hardware_id)
+    else:
+        print("未发现配置文件，创建新配置...")
+        create_new_config(hardware_id)
+
+
+def create_new_config(hardware_id):
+    """为示例4创建新的配置文件"""
+    config = {
+        'hardware_id': hardware_id,
+        'theme': 'default',
+        'language': 'zh_CN',
+        'auto_save': True,
+        'font_size': 12
+    }
+    
+    with open("software_config.json", 'w') as f:
+        json.dump(config, f, indent=2)
+    
+    print("✅ 新配置文件已创建")
+    
+
+# 示例5: 自定义验证参数
+def example_custom_verification():
+    """
+    自定义验证参数示例
+    使用不同的API和存储位置
+    """
+    print("\n" + "=" * 60)
+    print("示例5: 自定义验证参数")
+    print("=" * 60)
+    
+    # 创建自定义验证器
+    custom_verifier = KamiVerifier(
+        api_url='http://170.106.175.187/api/card-keys/verify',  # 实际使用时可以替换为自己的API
+        verification_file='custom_verification.bin',
+        legacy_file='custom_verification.json'
+    )
+    
+    print("使用自定义验证参数:")
+    print(f"API地址: {custom_verifier.api_url}")
+    print(f"验证文件: {custom_verifier.verification_file}")
+    
+    # 检查是否有效
+    is_valid, data = custom_verifier.is_verified()
+    if is_valid:
+        print("✅ 自定义位置的验证文件有效")
+    else:
+        print("❌ 自定义位置未找到有效验证")
+        print("需要进行验证...")
+
+
+# 主函数
+def main():
+    print("\n欢迎使用卡密验证系统集成示例")
+    print("本示例展示如何在不同场景下集成卡密验证功能\n")
+    
+    # 运行示例1: 应用程序启动保护
+    if not example_app_startup_protection():
+        print("应用程序启动保护验证失败，程序退出")
+        return
+    
+    # 运行示例2: 软件功能解锁
+    example_feature_unlock()
+    
+    # 运行示例3: 周期性校验
+    example_periodic_verification()
+    
+    # 运行示例4: 绑定软件配置文件
+    example_config_binding()
+    
+    # 运行示例5: 自定义验证参数
+    example_custom_verification()
+    
+    print("\n" + "=" * 60)
+    print("示例演示完成，感谢使用!")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n程序已被用户中断")
+    except Exception as e:
+        logger.exception("运行示例时出错")
+        print(f"运行示例时出错: {e}") 
+</pre>
+              </details>
+
+              <details>
+                <summary><strong>readme.md（功能说明与集成文档）</strong></summary>
+                <pre class="code-block">
+# 卡密验证系统 - 高级功能
+
+本项目提供了卡密验证系统的扩展功能，包括硬件绑定和验证文件加密功能，防止卡密被复制到其他设备使用。
+
+## 主要功能
+
+- **硬件绑定**: 将卡密与特定设备的硬件信息绑定
+- **验证文件加密**: 加密存储验证信息，防止直接复制验证文件
+- **多平台支持**: 支持Windows、Linux和macOS
+- **多种验证模式**: 支持一次性验证和周期性验证
+- **功能级别控制**: 根据卡密类型提供不同级别的功能
+
+## 文件说明
+
+- **verify_card_key_advanced.py**: 完整的高级卡密验证工具，包含命令行界面
+- **verification_utils.py**: 核心功能库，可以集成到其他项目中
+- **kami_integration_examples.py**: 各种集成示例，展示如何在不同场景下使用卡密验证
+
+## 安装依赖
+
+```bash
+pip install requests cryptography
+```
+
+## 使用方法
+
+### 1. 直接使用验证工具
+
+```bash
+# 运行高级卡密验证工具
+python verify_card_key_advanced.py
+
+# 查看硬件信息(调试模式)
+python verify_card_key_advanced.py --debug
+```
+
+### 2. 集成到自己的项目
+
+```python
+# 导入验证工具库
+from verification_utils import verify_card, is_card_valid, KamiVerifier
+
+# 方法1: 使用便捷函数验证卡密
+result = verify_card('XXXX-XXXX-XXXX-XXXX', 'user123')
+if result['success']:
+    print('卡密验证成功')
+else:
+    print('卡密验证失败:', result['message'])
+
+# 方法2: 检查是否已有有效卡密
+if is_card_valid():
+    print('设备已有有效卡密')
+else:
+    print('需要验证卡密')
+
+# 方法3: 使用KamiVerifier类进行更多自定义操作
+verifier = KamiVerifier(
+    api_url='http://170.106.175.187/api/card-keys/verify',  # 可自定义API地址
+    verification_file='my_verification.bin',  # 可自定义验证文件路径
+    legacy_file='my_verification.json'  # 可自定义旧版文件路径
+)
+
+# 检查是否已验证
+is_valid, data = verifier.is_verified()
+if is_valid:
+    print('设备已验证，卡密信息:', data['data'])
+```
+
+### 3. 查看集成示例
+
+运行集成示例，了解不同场景下的应用:
+
+```bash
+python kami_integration_examples.py
+```
+
+集成示例包括:
+- 应用程序启动保护
+- 软件功能解锁
+- 周期性校验
+- 配置文件绑定
+- 自定义验证参数
+
+## 硬件绑定机制
+
+硬件绑定通过收集以下设备信息生成唯一标识符:
+
+- CPU ID
+- 硬盘序列号
+- 主板序列号
+
+这些信息被组合并通过SHA-256算法生成一个唯一的硬件ID，验证文件与此ID绑定，确保在其他设备上无法使用。
+
+## 验证文件加密
+
+验证信息使用Fernet对称加密算法进行加密，密钥基于设备的硬件ID生成，确保即使验证文件被复制到其他设备，也无法解密使用。
+
+## API调用
+
+API端点: `http://170.106.175.187/api/card-keys/verify`
+
+请求格式:
+```json
+{
+  "key": "XXXX-XXXX-XXXX-XXXX",
+  "userIdentifier": "用户标识(可选)"
+}
+```
+
+响应格式:
+```json
+{
+  "success": true,
+  "data": {
+    "key": "XXXX-XXXX-XXXX-XXXX",
+    "cardType": "标准版",
+    "validDays": 30,
+    "expiryTime": "2024-12-31T23:59:59"
+  }
+}
+```
+
+## 兼容性
+
+- 支持旧版明文验证文件向新版加密文件的平滑升级
+- 支持在无法获取特定硬件信息时使用备选方案
+- 在Windows/Linux/macOS上均可运行，但获取硬件信息的方法可能有所不同
+
+## 注意事项
+
+1. 首次使用需要联网验证卡密
+2. 需要安装requests和cryptography库
+3. 在某些系统上获取硬件信息可能需要管理员/root权限
+4. 验证文件默认保存在当前目录下
+
+## 更多信息
+
+有关API的更多信息，请参考卡密验证系统的完整文档。 
+</pre>
+              </details>
+            </div>
+            
+            <!-- JavaScript示例 -->
+            <div id="javascript-api" class="api-content">
+              <h3>JavaScript示例</h3>
+              <p>使用fetch API发送HTTP请求验证卡密：</p>
+              <pre class="code-block">
+// 验证卡密函数
+async function verifyCardKey(key, userIdentifier = '') {
+  try {
+    const response = await fetch('http://170.106.175.187/api/card-keys/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        key: key,
+        userIdentifier: userIdentifier
+      })
+    });
+    
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: `错误: ${error.message}`
+    };
+  }
+}
+
+// 使用示例
+verifyCardKey('XXXX-XXXX-XXXX-XXXX')
+  .then(result => {
+    if (result.success) {
+      console.log('卡密有效:', result.data);
+    } else {
+      console.log('卡密无效:', result.message);
+    }
+  });
+</pre>
+            </div>
+            
+            <!-- PHP示例 -->
+            <div id="php-api" class="api-content">
+              <h3>PHP示例</h3>
+              <p>使用cURL发送HTTP请求验证卡密：</p>
+              <pre class="code-block">
+&lt;?php
+/**
+ * 验证卡密是否有效
+ * 
+ * @param string $key 卡密
+ * @param string $userIdentifier 用户标识（可选）
+ * @return array 验证结果
+ */
+function verifyCardKey($key, $userIdentifier = '') {
+    $data = json_encode([
+        'key' => $key,
+        'userIdentifier' => $userIdentifier
+    ]);
+    
+    $ch = curl_init('http://170.106.175.187/api/card-keys/verify');
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Content-Length: ' . strlen($data)
+    ]);
+    
+    $result = curl_exec($ch);
+    curl_close($ch);
+    
+    return json_decode($result, true);
+}
+
+// 使用示例
+$result = verifyCardKey('XXXX-XXXX-XXXX-XXXX');
+if ($result['success']) {
+    echo '卡密有效: ' . print_r($result['data'], true);
+} else {
+    echo '卡密无效: ' . $result['message'];
+}
+?&gt;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 管理员后台 -->
+      <div class="admin-panel" v-if="isAdminLoggedIn">
+        <div class="admin-sidebar">
+          <div class="admin-sidebar__header">
+            <h3>管理系统</h3>
+          </div>
+          <ul class="admin-nav">
+            <li class="admin-nav__item" :class="{ 'active': activeNav === 'cards' }" @click="activeNav = 'cards'">
+              <span class="admin-nav__icon">📋</span> 卡密管理
+            </li>
+            <li class="admin-nav__item" :class="{ 'active': activeNav === 'stats' }" @click="activeNav = 'stats'">
+              <span class="admin-nav__icon">📊</span> 统计分析
+            </li>
+            <li class="admin-nav__item" :class="{ 'active': activeNav === 'records' }" @click="activeNav = 'records'">
+              <span class="admin-nav__icon">📝</span> 使用记录
+            </li>
+            <li class="admin-nav__item" :class="{ 'active': activeNav === 'settings' }" @click="activeNav = 'settings'">
+              <span class="admin-nav__icon">⚙️</span> 系统设置
+            </li>
+          </ul>
+        </div>
+
+        <div class="admin-content">
+          <!-- 卡密管理 -->
+          <div v-if="activeNav === 'cards'">
+            <h2>卡密管理</h2>
+            
+            <div class="card">
+              <div class="card__header">
+                <h3>生成卡密</h3>
+              </div>
+              <div class="card__body">
+                <div class="flex gap-16">
+                  <div class="form-group">
+                    <label class="form-label">生成数量</label>
+                    <input type="number" class="form-control" v-model="generateCount" min="1" max="100">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">有效期(天)</label>
+                    <select class="form-control" v-model="generateValidity">
+                      <option value="1">1天</option>
+                      <option value="30">30天</option>
+                      <option value="90">90天</option>
+                      <option value="180">180天</option>
+                      <option value="365">365天</option>
+                      <option value="custom">自定义</option>
+                    </select>
+                  </div>
+                  <div class="form-group" v-if="generateValidity === 'custom'">
+                    <label class="form-label">自定义天数</label>
+                    <input type="number" class="form-control" v-model="customValidityDays" min="1" max="3650" placeholder="请输入天数">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">卡密类型</label>
+                    <select class="form-control" v-model="generateCardType">
+                      <option value="时长卡">时长卡</option>
+                    </select>
+                  </div>
+                  <div class="form-group flex items-center">
+                    <button class="btn btn--primary" style="margin-top: 24px;" @click="generateCards">
+                      生成卡密
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-8">
+              <div class="card__header">
+                <h3>卡密列表</h3>
+              </div>
+              <div class="card__body">
+                <div class="card-list-actions">
+                  <div class="form-group search-box">
+                    <input type="text" class="form-control" placeholder="搜索卡密..." v-model="cardSearch">
+                  </div>
+                  <button class="btn btn--secondary btn--sm" @click="exportCards">导出列表</button>
+                </div>
+
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>序号</th>
+                        <th>卡密</th>
+                        <th>状态</th>
+                        <th>类型</th>
+                        <th>创建时间</th>
+                        <th>使用时间</th>
+                        <th>有效期</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="card in filteredCards" :key="card.id">
+                        <td>{{ card.id }}</td>
+                        <td>{{ card.key }}</td>
+                        <td>
+                          <span class="status" 
+                            :class="{
+                              'status--success': card.status === '未使用', 
+                              'status--info': card.status === '已使用',
+                              'status--error': card.status === '已过期'
+                            }">
+                            {{ card.status }}
+                          </span>
+                        </td>
+                        <td>{{ card.cardType }}</td>
+                        <td>{{ card.createTime }}</td>
+                        <td>{{ card.useTime }}</td>
+                        <td>{{ card.validDays }}天</td>
+                        <td>
+                          <button class="btn btn--secondary btn--sm" @click="deleteCard(card._id)">删除</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div class="pagination" v-if="pagination.totalPages > 1">
+                  <button 
+                    class="pagination-btn" 
+                    @click="changePage(pagination.currentPage - 1)"
+                    :disabled="pagination.currentPage === 1"
+                  >&laquo; 上一页</button>
+                  
+                  <span class="pagination-info">
+                    {{ pagination.currentPage }} / {{ pagination.totalPages }} 页
+                    (共 {{ pagination.totalItems }} 条)
+                  </span>
+                  
+                  <button 
+                    class="pagination-btn" 
+                    @click="changePage(pagination.currentPage + 1)"
+                    :disabled="pagination.currentPage === pagination.totalPages"
+                  >下一页 &raquo;</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 统计分析 -->
+          <div v-if="activeNav === 'stats'">
+            <h2>统计分析</h2>
+            
+            <div class="card">
+              <div class="card__body">
+                <div class="stats-overview">
+                  <div class="stat-card">
+                    <div class="stat-card__title">总卡密数</div>
+                    <div class="stat-card__value">{{ statistics.total }}</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-card__title">已使用</div>
+                    <div class="stat-card__value">{{ statistics.used }}</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-card__title">未使用</div>
+                    <div class="stat-card__value">{{ statistics.unused }}</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-card__title">已过期</div>
+                    <div class="stat-card__value">{{ statistics.expired }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-8">
+              <div class="card__header">
+                <h3>卡密使用状态分布</h3>
+              </div>
+              <div class="card__body">
+                <div class="chart-container">
+                  <canvas id="cardStatusChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 系统设置 -->
+          <div v-if="activeNav === 'settings'">
+            <h2>系统设置</h2>
+            
+            <div class="card">
+              <div class="card__header">
+                <h3>基本设置</h3>
+              </div>
+              <div class="card__body">
+                <div class="form-group">
+                  <label class="form-label">系统名称</label>
+                  <input type="text" class="form-control" v-model="settings.systemName">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">管理员邮箱</label>
+                  <input type="email" class="form-control" v-model="settings.adminEmail">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">卡密格式</label>
+                  <select class="form-control" v-model="settings.keyFormat">
+                    <option value="XXXX-XXXX-XXXX-XXXX">XXXX-XXXX-XXXX-XXXX</option>
+                    <option value="XXXXXXXXXXXXXXXX">XXXXXXXXXXXXXXXX</option>
+                    <option value="XXXX-XXXX-XXXX">XXXX-XXXX-XXXX</option>
+                  </select>
+                </div>
+                <button class="btn btn--primary" @click="saveSettings">保存设置</button>
+              </div>
+            </div>
+            
+            <div class="card mt-8">
+              <div class="card__header">
+                <h3>修改密码</h3>
+              </div>
+              <div class="card__body">
+                <div class="form-group">
+                  <label class="form-label">当前密码</label>
+                  <input type="password" class="form-control" v-model="passwordChange.current">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">新密码</label>
+                  <input type="password" class="form-control" v-model="passwordChange.new">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">确认新密码</label>
+                  <input type="password" class="form-control" v-model="passwordChange.confirm">
+                </div>
+                <button class="btn btn--primary" @click="changePassword">更改密码</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 使用记录页面 -->
+          <div v-if="activeNav === 'records'">
+            <h2>使用记录</h2>
+            
+            <div class="card">
+              <div class="card__header">
+                <h3>验证记录</h3>
+              </div>
+              <div class="card__body">
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>序号</th>
+                        <th>卡密</th>
+                        <th>使用时间</th>
+                        <th>用户IP</th>
+                        <th>验证状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="log in verificationLogs" :key="log.id">
+                        <td>{{ log.id }}</td>
+                        <td>{{ log.key }}</td>
+                        <td>{{ log.useTime }}</td>
+                        <td>{{ log.userIP }}</td>
+                        <td>
+                          <span class="status" 
+                            :class="{
+                              'status--success': log.status === '验证成功', 
+                              'status--error': log.status === '验证失败'
+                            }">
+                            {{ log.status }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div class="pagination" v-if="logsPagination.totalPages > 1">
+                  <button 
+                    class="pagination-btn" 
+                    @click="changeLogsPage(logsPagination.currentPage - 1)"
+                    :disabled="logsPagination.currentPage === 1"
+                  >&laquo; 上一页</button>
+                  
+                  <span class="pagination-info">
+                    {{ logsPagination.currentPage }} / {{ logsPagination.totalPages }} 页
+                    (共 {{ logsPagination.totalItems }} 条)
+                  </span>
+                  
+                  <button 
+                    class="pagination-btn" 
+                    @click="changeLogsPage(logsPagination.currentPage + 1)"
+                    :disabled="logsPagination.currentPage === logsPagination.totalPages"
+                  >下一页 &raquo;</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 管理员登录弹窗 -->
+    <div class="modal" v-if="showLoginModal">
+      <div class="modal-overlay" @click="showLoginModal = false"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>管理员登录</h3>
+          <button class="modal-close" @click="showLoginModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="username">用户名</label>
+            <input type="text" id="username" class="form-control" v-model="adminCredentials.username" placeholder="请输入用户名">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">密码</label>
+            <input type="password" id="password" class="form-control" v-model="adminCredentials.password" placeholder="请输入密码">
+          </div>
+          <div v-if="loginError" class="login-error">
+            用户名或密码错误
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--secondary" @click="showLoginModal = false">取消</button>
+          <button class="btn btn--primary" @click="adminLogin">登录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" v-if="toast.show" :class="toast.type">
+      {{ toast.message }}
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // API选项卡切换功能
+    function showApiTab(tabId) {
+      // 隐藏所有内容
+      document.querySelectorAll('.api-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // 取消所有标签页的激活状态
+      document.querySelectorAll('.api-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // 激活选中的标签页和内容
+      document.getElementById(tabId + '-api').classList.add('active');
+      document.querySelector(`.api-tab[onclick="showApiTab('${tabId}')"]`).classList.add('active');
+    }
+  </script>
+</body>
+</html>

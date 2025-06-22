@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>API测试</title>
+</head>
+<body>
+  <h2>卡密验证API测试</h2>
+  <button onclick="testAPI()">测试API</button>
+  <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+  <script>
+    function testAPI() {
+      document.getElementById('result').innerHTML = '正在测试...';
+      
+      // 使用线上API地址
+      fetch('http://170.106.175.187/api/card-keys/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          key: document.getElementById('cardKey').value || '测试卡密'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      })
+      .catch(error => {
+        document.getElementById('result').innerHTML = '错误: ' + error.message;
+      });
+    }
+  </script>
+  
+  <div style="margin-top: 20px;">
+    <label for="cardKey">卡密:</label>
+    <input type="text" id="cardKey" placeholder="输入要验证的卡密">
+  </div>
+</body>
+</html> 
